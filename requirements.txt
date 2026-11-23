@@ -1,4 +1,5 @@
-streamlit>=1.36
+streamlit>=1.50
+fpdf2>=2.7
 openai>=1.40
 pymupdf>=1.24
 python-dotenv>=1.0
