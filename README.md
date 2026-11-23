@@ -15,7 +15,7 @@ cp .env.example .env               # впишите OPENAI_API_KEY (или вв�
 streamlit run app.py
 ```
 
-Откроется http://localhost:8501. Для проверки можно взять `samples/python_basics.txt` и `samples/economics_basics.txt`,
+Откроется https://ai-question-generator-kaznu.streamlit.app/. Для проверки можно взять `samples/python_basics.txt` и `samples/economics_basics.txt`,
 но лучше загрузить настоящие учебники (текстовые PDF).
 
 ## Запуск в облаке (Streamlit Community Cloud)
