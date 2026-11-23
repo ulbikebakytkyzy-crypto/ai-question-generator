@@ -24,8 +24,11 @@ CREATE TABLE IF NOT EXISTS questions(
   answer TEXT, explanation TEXT, source_page INTEGER,
   quality_status TEXT DEFAULT 'unchecked', quality_comment TEXT DEFAULT '',
   manual_reviewed INTEGER DEFAULT 0, manual_verdict TEXT DEFAULT '', manual_comment TEXT DEFAULT '',
-  created_at TEXT);
+  created_at TEXT, model TEXT DEFAULT '');
 """
+
+# колонки, добавленные позже (миграция старых баз)
+MIGRATIONS = [("questions", "model", "TEXT DEFAULT ''")]
 
 EDITABLE = {
     "level", "question", "options", "correct_index", "answer", "explanation",
@@ -51,6 +54,10 @@ def conn():
 def init():
     with conn() as c:
         c.executescript(SCHEMA)
+        for table, col, decl in MIGRATIONS:
+            cols = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
+            if col not in cols:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
 
 
 def _now():
@@ -112,13 +119,14 @@ def add_questions(doc_id, topic, questions):
         for q in questions:
             c.execute(
                 """INSERT INTO questions(doc_id, topic_id, topic_title, level, qtype, question, options,
-                   correct_index, answer, explanation, source_page, quality_status, quality_comment, created_at)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   correct_index, answer, explanation, source_page, quality_status, quality_comment, created_at, model)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     doc_id, topic["id"], topic["title"], q["level"], q["qtype"], q["question"],
                     json.dumps(q["options"], ensure_ascii=False) if q.get("options") else None,
                     q.get("correct_index"), q["answer"], q.get("explanation", ""), q.get("source_page"),
                     q.get("quality_status", "unchecked"), q.get("quality_comment", ""), _now(),
+                    q.get("model", ""),
                 ),
             )
 
@@ -155,3 +163,60 @@ def update_question(qid, **fields):
 def delete_question(qid):
     with conn() as c:
         c.execute("DELETE FROM questions WHERE id=?", (qid,))
+
+
+# ---------- резервная копия (на Streamlit Cloud база стирается при перезапуске) ----------
+TABLES = ("documents", "chunks", "topics", "questions")
+
+
+def export_all():
+    """Вся база в виде dict — для скачивания JSON-бэкапа."""
+    with conn() as c:
+        return {t: [dict(r) for r in c.execute(f"SELECT * FROM {t} ORDER BY id")] for t in TABLES}
+
+
+def import_all(data, replace=True):
+    """Восстанавливает базу из JSON-бэкапа. Возвращает число восстановленных вопросов."""
+    if not isinstance(data, dict) or "documents" not in data:
+        raise ValueError("Это не файл резервной копии приложения.")
+    with conn() as c:
+        if replace:
+            for t in reversed(TABLES):
+                c.execute(f"DELETE FROM {t}")
+        id_map = {}
+        for d in data.get("documents", []):
+            cur = c.execute("INSERT INTO documents(name, n_pages, uploaded_at) VALUES(?,?,?)",
+                            (d["name"], d.get("n_pages"), d.get("uploaded_at")))
+            id_map[d["id"]] = cur.lastrowid
+        for ch in data.get("chunks", []):
+            if ch["doc_id"] in id_map:
+                c.execute("INSERT INTO chunks(doc_id, page, idx, text) VALUES(?,?,?,?)",
+                          (id_map[ch["doc_id"]], ch.get("page"), ch.get("idx"), ch.get("text")))
+        topic_map = {}
+        for t in data.get("topics", []):
+            if t["doc_id"] in id_map:
+                cur = c.execute("INSERT INTO topics(doc_id, title, description, keywords) VALUES(?,?,?,?)",
+                                (id_map[t["doc_id"]], t.get("title"), t.get("description"), t.get("keywords")))
+                topic_map[t["id"]] = cur.lastrowid
+        cols = ["topic_title", "level", "qtype", "question", "options", "correct_index", "answer", "explanation",
+                "source_page", "quality_status", "quality_comment", "manual_reviewed", "manual_verdict",
+                "manual_comment", "created_at", "model"]
+        n = 0
+        for q in data.get("questions", []):
+            if q["doc_id"] not in id_map:
+                continue
+            opts = q.get("options")
+            if isinstance(opts, list):
+                q = {**q, "options": json.dumps(opts, ensure_ascii=False)}
+            vals = [q.get(k) for k in cols]
+            c.execute(f"INSERT INTO questions(doc_id, topic_id, {', '.join(cols)}) "
+                      f"VALUES(?,?,{','.join('?' * len(cols))})",
+                      [id_map[q["doc_id"]], topic_map.get(q.get("topic_id")), *vals])
+            n += 1
+    return n
+
+
+def add_topic(doc_id, title, description="", keywords=None):
+    with conn() as c:
+        c.execute("INSERT INTO topics(doc_id, title, description, keywords) VALUES(?,?,?,?)",
+                  (doc_id, title, description, json.dumps(keywords or [], ensure_ascii=False)))

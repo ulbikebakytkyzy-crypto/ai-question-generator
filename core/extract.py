@@ -33,9 +33,12 @@ def read_document(name: str, data: bytes):
     lower = name.lower()
     if lower.endswith(".pdf"):
         try:
-            import fitz  # PyMuPDF
-        except ImportError as e:  # pragma: no cover
-            raise RuntimeError("Не установлен PyMuPDF: pip install pymupdf") from e
+            import pymupdf as fitz  # PyMuPDF
+        except ImportError:
+            try:
+                import fitz  # старые версии PyMuPDF
+            except ImportError as e:  # pragma: no cover
+                raise RuntimeError("Не установлен PyMuPDF: pip install pymupdf") from e
         doc = fitz.open(stream=data, filetype="pdf")
         pages = []
         for i, page in enumerate(doc):

@@ -13,6 +13,15 @@ LEVELS = {
                          "и многошагового рассуждения."),
 }
 
+# примеры из задания — помогают модели «почувствовать» разницу уровней (не копируются в ответ)
+LEVEL_EXAMPLES = {
+    1: "Что такое функция в Python?",
+    2: "Чем отличаются аргументы функции от параметров?",
+    3: "Напишите функцию, которая возвращает максимальное число из списка.",
+    4: "Найдите ошибку в предложенном коде и объясните причину.",
+    5: "Предложите решение сложной задачи с использованием нескольких функций и объясните выбранный подход.",
+}
+
 LANGS = {"Русский": "Russian", "Қазақша": "Kazakh", "English": "English"}
 QTYPES = {"mcq": "Тестовые (4 варианта)", "open": "Открытые"}
 
@@ -41,12 +50,15 @@ def _build_prompt(topic, level, qtype, n, context, avoid, language):
     user = f"""Topic: {topic['title']}
 Number of questions: {n}
 Difficulty level: {level} of 5 — "{lname}": {ldesc}
+Style example for this level (from a Python textbook; adapt the STYLE to this material, do not copy): "{LEVEL_EXAMPLES[level]}"
 Question type: {fmt}
 Write everything in {language}. Keep code, formulas and terms from the material unchanged.
 
 Rules:
 - Every question must be answerable from the fragments below and must belong to the topic "{topic['title']}".
 - The difficulty must clearly match level {level}; do not make all questions look alike.
+- For levels 4–5 include the needed code/situation/data right inside the question text so it is self-contained.
+- The answer must be fully correct according to the material; for open questions give a complete model answer.
 - Do not repeat or paraphrase these already existing questions:
 {avoid_txt}
 

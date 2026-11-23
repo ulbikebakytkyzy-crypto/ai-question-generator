@@ -4,6 +4,8 @@ import os
 import time
 
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+# модели для выбора в интерфейсе (можно вписать и любую другую)
+MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o", "gpt-4.1"]
 
 
 class LLMError(Exception):
