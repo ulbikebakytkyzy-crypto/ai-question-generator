@@ -3,7 +3,7 @@
 Загрузка PDF/TXT → извлечение текста → определение тем → генерация вопросов 5 уровней сложности
 (тестовые и открытые) с ответами → проверка качества → просмотр, правка и экспорт.
 
-**Стек:** Python · Streamlit · SQLite · OpenAI API · PyMuPDF · fpdf2
+**Стек:** Python · Streamlit · SQLite · LLM API (Google Gemini / Groq — бесплатно, или OpenAI) · PyMuPDF · fpdf2
 
 ## Запуск
 
@@ -21,8 +21,9 @@ streamlit run app.py
 ## Запуск в облаке (Streamlit Community Cloud)
 
 1. share.streamlit.io → **Create app** → репозиторий, ветка `main`, файл `app.py` → **Deploy**.
-2. Ключ OpenAI: либо каждый пользователь вводит свой ключ в боковой панели,
-   либо владелец добавляет его в **Settings → Secrets**: `OPENAI_API_KEY = "sk-..."`
+2. Ключ модели (бесплатно, без карты): Google Gemini — https://aistudio.google.com/apikey,
+   Groq — https://console.groq.com/keys. Ключ вводится в боковой панели или добавляется в
+   **Settings → Secrets**: `GEMINI_API_KEY = "..."` / `GROQ_API_KEY = "..."` / `OPENAI_API_KEY = "sk-..."`
    (ключ из Secrets остаётся на сервере и в браузер не передаётся, но расходы по нему несёт владелец).
 3. База SQLite на бесплатном хостинге может обнулиться после перезапуска — используйте
    «💾 Резервная копия базы» в боковой панели (скачать JSON / восстановить).

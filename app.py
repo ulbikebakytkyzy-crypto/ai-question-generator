@@ -14,7 +14,7 @@ st.set_page_config(page_title="AI-генератор вопросов", page_ico
 
 # ключ из Streamlit Secrets (на сервере) → переменная окружения; в браузер он не передаётся
 try:
-    for _k in ("OPENAI_API_KEY", "OPENAI_MODEL"):
+    for _k in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENAI_API_KEY", "LLM_MODEL", "OPENAI_MODEL"):
         if _k in st.secrets and not os.getenv(_k):
             os.environ[_k] = str(st.secrets[_k])
 except Exception:  # noqa: BLE001 — secrets.toml может отсутствовать
@@ -24,7 +24,7 @@ from core import db, extract, grader, retrieval, validator  # noqa: E402
 from core import topics as topics_mod  # noqa: E402
 from core.export_pdf import questions_pdf  # noqa: E402
 from core.generator import LANGS, LEVELS, QTYPES, generate  # noqa: E402
-from core.llm import DEFAULT_MODEL, MODELS, LLMError  # noqa: E402
+from core.llm import DEFAULT_MODEL, MODELS, PROVIDERS, LLMError, default_provider  # noqa: E402
 
 db.init()
 
@@ -38,8 +38,8 @@ def level_label(l):
     return f"{l} — {LEVELS[l][0]}"
 
 
-def model_picker(label, key, default=DEFAULT_MODEL):
-    opts = list(dict.fromkeys([default, *MODELS])) + ["другая…"]
+def model_picker(label, key, default=DEFAULT_MODEL, models=None):
+    opts = list(dict.fromkeys([default, *(models or MODELS)])) + ["другая…"]
     choice = st.selectbox(label, opts, key=key)
     if choice == "другая…":
         return st.text_input("Название модели", key=f"{key}_custom").strip() or default
@@ -48,17 +48,22 @@ def model_picker(label, key, default=DEFAULT_MODEL):
 
 # ---------------------------------------------------------------- боковая панель
 st.sidebar.title("📚 AI-генератор вопросов")
-server_key = bool(os.getenv("OPENAI_API_KEY"))
+prov_ids = list(PROVIDERS)
+provider = st.sidebar.selectbox("AI-провайдер", prov_ids, index=prov_ids.index(default_provider()),
+                                format_func=lambda p: PROVIDERS[p]["label"])
+pcfg = PROVIDERS[provider]
+server_key = bool(os.getenv(pcfg["env"]))
 user_key = st.sidebar.text_input(
-    "OpenAI API key", type="password",
-    placeholder="ключ уже подключён на сервере" if server_key else "sk-...",
+    "API-ключ", type="password", key=f"key_{provider}",
+    placeholder="ключ уже подключён на сервере" if server_key else "вставьте ключ",
     help="Ключ используется только в этой сессии и нигде не сохраняется.",
 )
-api_key = user_key.strip() or None
+api_key = {provider: user_key.strip()} if user_key.strip() else None
 if not (api_key or server_key):
-    st.sidebar.warning("Введите OpenAI API key, чтобы работали темы и генерация.")
+    st.sidebar.warning(f"Нужен ключ {pcfg['label']}. Бесплатно получить: {pcfg['key_url']}")
 with st.sidebar:
-    model = model_picker("Модель", "model_main")
+    pdef = DEFAULT_MODEL if DEFAULT_MODEL in pcfg["models"] else pcfg["models"][0]
+    model = model_picker("Модель", f"model_main_{provider}", pdef, pcfg["models"])
 lang_label = st.sidebar.selectbox("Язык вопросов", list(LANGS.keys()),
                                   help="Материал может быть на любом языке — вопросы будут на выбранном.")
 language = LANGS[lang_label]
@@ -414,11 +419,11 @@ with tab_cmp:
         c_topic = st.selectbox("Тема", topics, format_func=lambda t: t["title"], key="cmp_topic")
         a1, a2, a3 = st.columns(3)
         with a1:
-            model_a = model_picker("Модель A", "cmp_a", MODELS[0])
+            model_a = model_picker("Модель A", "cmp_a", "gemini-2.5-flash")
         with a2:
-            model_b = model_picker("Модель B", "cmp_b", MODELS[1])
+            model_b = model_picker("Модель B", "cmp_b", "llama-3.3-70b-versatile")
         with a3:
-            judge = model_picker("Модель-судья", "cmp_j", MODELS[2])
+            judge = model_picker("Модель-судья", "cmp_j", "gemini-2.5-flash")
         b1, b2, b3 = st.columns(3)
         c_levels = b1.multiselect("Уровни", list(LEVELS), default=[1, 3, 5], format_func=level_label, key="cmp_l")
         c_type = b2.selectbox("Тип", list(QTYPES), format_func=QTYPES.get, key="cmp_qt")
