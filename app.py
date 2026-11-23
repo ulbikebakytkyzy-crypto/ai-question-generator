@@ -95,8 +95,27 @@ with st.sidebar.expander("💾 Резервная копия базы"):
         except (ValueError, KeyError, json.JSONDecodeError) as e:
             st.error(f"Не удалось восстановить: {e}")
 
-st.title("📚 AI-генератор вопросов по учебным материалам")
-st.caption("Загрузка документа → анализ текста → темы → генерация вопросов 5 уровней → правильные ответы → проверка")
+st.markdown("""
+<style>
+[data-testid="stSidebar"] {background: linear-gradient(180deg, #ede4ff 0%, #ffe6f2 100%);}
+.hero {background: linear-gradient(120deg, #7c3aed 0%, #db2777 55%, #f59e0b 100%); color: white;
+       padding: 22px 28px; border-radius: 18px; margin-bottom: 14px; box-shadow: 0 8px 24px rgba(124,58,237,.25);}
+.hero h1 {color: white !important; margin: 0; font-size: 2.1rem;}
+.hero p {margin: 6px 0 0; opacity: .95;}
+.stTabs [data-baseweb="tab-list"] {gap: 6px;}
+.stTabs [data-baseweb="tab"] {background: #efe9ff; border-radius: 12px 12px 0 0; padding: 8px 14px;}
+.stTabs [aria-selected="true"] {background: linear-gradient(120deg, #7c3aed, #db2777); color: white !important;}
+.stTabs [aria-selected="true"] p {color: white !important;}
+[data-testid="stMetric"] {background: white; border-radius: 14px; padding: 12px 16px;
+                          border-left: 6px solid #db2777; box-shadow: 0 2px 10px rgba(0,0,0,.05);}
+[data-testid="stExpander"] details {background: white; border-radius: 12px;}
+.stButton button[kind="primary"] {background: linear-gradient(120deg, #7c3aed, #db2777); border: 0;}
+.stDownloadButton button {border: 2px solid #7c3aed;}
+</style>
+""", unsafe_allow_html=True)
+st.markdown('<div class="hero"><h1>📚 AI-генератор вопросов по учебным материалам</h1>'
+            '<p>Загрузка документа → анализ текста → темы → вопросы 5 уровней → правильные ответы → проверка</p></div>',
+            unsafe_allow_html=True)
 
 tab_doc, tab_gen, tab_q, tab_quiz, tab_cmp, tab_export = st.tabs(
     ["1. Документ и темы", "2. Генерация", "3. Вопросы", "4. Мини-тест", "5. Сравнение моделей",
